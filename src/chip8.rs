@@ -26,4 +26,10 @@ impl Chip8 {
             keys: [0; 16],
         }
     }
+
+    pub fn load_program(&mut self, program: &[u8]) {
+        for (i, &byte) in program.iter().enumerate() {
+            self.memory[0x200 + i] = byte;
+        }
+    }
 }

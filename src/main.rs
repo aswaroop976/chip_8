@@ -1,55 +1,28 @@
-extern crate sdl2;
+mod chip8;
 
-use rand::Rng;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
-use std::time::Duration;
+use chip8::Chip8;
+use std::fs::File;
+use std::io::{self, Read};
+use std::path::Path;
 
-fn main() {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
+fn main() -> io::Result<()> {
+    // Create a new CHIP-8 emulator instance
+    let mut chip8 = Chip8::new();
 
-    let window = video_subsystem
-        .window("CHIP-8 Emulator", 800, 600)
-        .position_centered()
-        .build()
-        .unwrap();
-    let mut canvas = window.into_canvas().build().unwrap();
+    // Specify the path to the CHIP-8 program file
+    let program_path = "path_to_your_chip8_program.ch8";
 
-    canvas.set_draw_color(Color::RGB(0, 0, 0));
-    canvas.clear();
-    canvas.present();
+    // Read the program file into a byte vector
+    let program = read_program_file(program_path)?;
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut rng = rand::thread_rng();
+    // Load the program into the CHIP-8 emulator
+    chip8.load_program(&program);
 
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => {
-                    break 'running;
-                }
-                _ => {}
-            }
-        }
+    // Main emulation loop (simplified for this example)
+    loop {
+        chip8.emulate_cycle();
 
-        // Draw a random color
-        let r: u8 = rng.gen();
-        let g: u8 = rng.gen();
-        let b: u8 = rng.gen();
-        canvas.set_draw_color(Color::RGB(r, g, b));
-        canvas.clear();
-        canvas.present();
-
-        ::std::thread::sleep(Duration::from_millis(1000));
+        // Add timing control, input handling, and rendering here
     }
 }
 
-//fn main() {
-//    println!("Hello, world!");
-//}
