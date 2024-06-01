@@ -26,3 +26,10 @@ fn main() -> io::Result<()> {
     }
 }
 
+// Function to read a chip-8 program file into a byte vector
+fn read_program_file<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
+    let mut file = File::open(path)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    Ok(buffer)
+}
