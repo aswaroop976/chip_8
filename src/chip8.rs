@@ -1,3 +1,5 @@
+use std::usize;
+
 const MEMORY_SIZE: usize = 4096;
 const REGISTER_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
@@ -92,5 +94,41 @@ impl Chip8 {
         self.stack[self.stack_pointer as usize] = self.program_counter;
         self.stack_pointer += 1;
         self.program_counter = address
+    }
+    // SE Vx, byte - 3XNN
+    // Instruction: skip next instruction if Vx equals NN
+    fn se_vx_byte(&mut self, x: u16, byte: u8) {
+        if self.registers[x as usize] == byte {
+            self.program_counter += 2;
+        }
+    }
+    // SNE Vx, byte - 4XNN
+    // Instruction: skip next instruction if Vx doesn't equal NN
+    fn sne_vx_byte(&mut self, x: u16, byte: u8) {
+        if self.registers[x as usize] != byte {
+            self.program_counter += 2;
+        }
+    }
+    // SE Vx, Vy - 5XY0
+    // Instruction: skip next instruction if Vx equals Vy
+    fn se_vx_vy(&mut self, x: u16, y: u16) {
+        if self.registers[x as usize] == self.registers[y as usize] {
+            self.program_counter += 2;
+        }
+    }
+    // LD Vx, byte - 6XNN
+    // Instruction: set Vx to NN
+    fn ld_vx_byte(&mut self, x: u16, byte: u8) {
+        self.registers[x as usize] = byte;
+    }
+    // ADD Vx, byte - 7XNN
+    // Instruction: add NN to Vx
+    fn add_vx_byte(&mut self, x: u16, byte: u8) {
+        self.registers[x as usize] = self.registers[x as usize].wrapping_add(byte);
+    }
+    // LD Vx, Vy - 8XY0
+    // Instruction: set Vx to the value of Vy
+    fn ld_vx_vy(&mut self, x: u16, y: u16) {
+        self.registers[x as usize] = self.registers[y as usize];
     }
 }
