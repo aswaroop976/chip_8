@@ -67,4 +67,30 @@ impl Chip8 {
             self.memory[0x200 + i] = byte;
         }
     }
+    // need to implement the fetch, decode, and execute instructions
+
+    // instruction implementation
+    // CLS - 00E0
+    // Instruction: clear the display
+    fn cls(&mut self) {
+        self.screen = [0; SCREEN_WIDTH * SCREEN_HEIGHT]
+    }
+    // RET - 00EE
+    // Instruction: return from a subroutine
+    fn ret(&mut self) {
+        self.stack_pointer -= 1;
+        self.program_counter = self.stack[self.stack_pointer as usize];
+    }
+    // JP - 1NNN
+    // Instruction: jump to address NNN
+    fn jp(&mut self, address: u16) {
+        self.program_counter = address
+    }
+    // CALL - 2NNN
+    // Instruction: call subroutine at NNN
+    fn call(&mut self, address: u16) {
+        self.stack[self.stack_pointer as usize] = self.program_counter;
+        self.stack_pointer += 1;
+        self.program_counter = address
+    }
 }
