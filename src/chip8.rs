@@ -3,8 +3,8 @@ use std::usize;
 const MEMORY_SIZE: usize = 4096;
 const REGISTER_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
-const SCREEN_WIDTH: usize = 64;
-const SCREEN_HEIGHT: usize = 32;
+pub const SCREEN_WIDTH: usize = 64;
+pub const SCREEN_HEIGHT: usize = 32;
 const FONTSET_SIZE: usize = 80;
 const FONTSET_START_ADDRESS: usize = 0x50;
 const PROGRAM_START_ADDRESS: usize = 0x200;
@@ -73,7 +73,7 @@ impl Chip8 {
             self.memory[0x200 + i] = byte;
         }
     }
-    // need to implement the fetch, decode, and execute instructions
+
     fn create_jump_table() -> [OpcodeHandler; 16] {
         [
             Chip8::op_0xxx,          // 0x0XXX group
