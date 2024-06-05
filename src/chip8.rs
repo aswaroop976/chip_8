@@ -225,4 +225,137 @@ impl Chip8 {
         let address = opcode & 0x0FFF;
         self.index_register = address;
     }
+    // JP V0, addr - BNNN
+    // Instruction: jump to location nnn + V0
+    fn jp_v0_addr(&mut self, opcode: u16) {
+        let address = opcode & 0x0FFF;
+        self.program_counter = (self.registers[0] as u16) + address;
+    }
+    // RND Vx, byte
+    // Instruction: set Vx = random byte and passed in byte
+    fn rnd_vx_byte(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let byte = (opcode & 0x00FF) as u8;
+        let random_byte: u8 = rand::random(); // Generate a random byte
+        self.registers[x] = random_byte & byte;
+    }
+    // DRW Vx, Vy, nibble
+    // Instruction: display n-byte sprite starting at memory location I at (Vx, Vy), set VF =
+    // collision
+    fn drw_vx_vy_nibble(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let y = ((opcode & 0x00F0) >> 4) as usize;
+        let height = (opcode & 0x000F) as usize;
+
+        let vx = self.registers[x] as usize;
+        let vy = self.registers[y] as usize;
+
+        self.registers[0xF] = 0;
+
+        for row in 0..height {
+            let sprite_byte = self.memory[self.index_register as usize + row];
+            for col in 0..8 {
+                let sprite_pixel = sprite_byte & (0x80 >> col);
+                let screen_index = (vy + row) * SCREEN_WIDTH + (vx + col);
+
+                if screen_index < self.screen.len() {
+                    let screen_pixel = &mut self.screen[screen_index];
+                    if sprite_pixel != 0 {
+                        if *screen_pixel == 1 {
+                            self.registers[0xF] = 1;
+                        }
+                        *screen_pixel ^= 1;
+                    }
+                }
+            }
+        }
+    }
+    // SKP Vx - EX9E
+    // Instruction: skip the next instruction if the key with the value of Vx is pressed
+    fn skp_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let key = self.registers[x];
+        if self.keys[key as usize] != 0 {
+            self.program_counter += 2;
+        }
+    }
+    // SKNP Vx - EXA1
+    // Instruction: skip the next instruction if the key with the value of Vx is not pressed
+    fn sknp_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let key = self.registers[x];
+        if self.keys[key as usize] == 0 {
+            self.program_counter += 2;
+        }
+    }
+    // LD Vx, DT - FX07
+    // Instruction: set Vx = delay timer value
+    fn ld_vx_dt(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        self.registers[x] = self.delay_timer;
+    }
+    // LD Vx, K - FX0A
+    // Instruction: wait for a key press, store the value of the key in Vx
+    fn ld_vx_k(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        for i in 0..self.keys.len() {
+            if self.keys[i] != 0 {
+                self.registers[x] = i as u8;
+                return;
+            }
+        }
+        // If no key is pressed, decrement PC to repeat the instruction
+        self.program_counter -= 2;
+    }
+    // LD DT, Vx - FX15
+    // Instruction: set delay timer = Vx
+    fn ld_dt_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        self.delay_timer = self.registers[x];
+    }
+    // LD ST, Vx - FX18
+    // Instruction: set sound timer = Vx
+    fn ld_st_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        self.sound_timer = self.registers[x];
+    }
+    // ADD I, Vx - FX1E
+    // Instruction: Set I = I + Vx
+    fn add_i_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        self.index_register = self.index_register.wrapping_add(self.registers[x] as u16);
+    }
+    // LD F, Vx - FX29
+    // Instruction: set I = location of sprite for digit Vx
+    fn ld_f_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let digit = self.registers[x] as u16;
+        self.index_register = FONTSET_START_ADDRESS as u16 + digit * 5;
+    }
+    // LD B, Vx
+    // Instruction: store BCD representation of Vx in memory locations I, I+1, and I+2
+    fn ld_b_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let value = self.registers[x];
+
+        self.memory[self.index_register as usize] = value / 100;
+        self.memory[(self.index_register + 1) as usize] = (value / 10) % 10;
+        self.memory[(self.index_register + 2) as usize] = value % 10;
+    }
+    // LD [I], Vx
+    // Instruction: store registers V0 through Vx in memory starting at location I
+    fn ld_i_vx(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        for i in 0..=x {
+            self.memory[self.index_register as usize + i] = self.registers[i];
+        }
+    }
+    // LD Vx, I
+    // Instruction: read registers V0 through Vx from memory starting at location I
+    fn ld_vx_i(&mut self, opcode: u16) {
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        for i in 0..=x {
+            self.registers[i] = self.memory[self.index_register as usize + i];
+        }
+    }
 }
