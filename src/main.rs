@@ -14,7 +14,6 @@ use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, Read};
-use std::path::Path;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -40,13 +39,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Create a new CHIP-8 emulator instance
     let mut chip8 = Chip8::new();
-    // Get the path to the .ch8 file from command line arguments
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Usage: {} <path to .ch8 file>", args[0]);
-        return Ok(());
-    }
-    let rom_path = &args[1];
+    let rom_path = "test_opcode.ch8";
+    let current_dir = env::current_dir()?;
+    println!("Current working directory: {:?}", current_dir);
 
     // Print the file path to ensure it's correct
     println!("Loading ROM from path: {}", rom_path);
