@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Create a new CHIP-8 emulator instance
     let mut chip8 = Chip8::new();
-    let rom_path = "test_opcode.ch8";
+    let rom_path = "tetris.ch8";
     let current_dir = env::current_dir()?;
     println!("Current working directory: {:?}", current_dir);
 
