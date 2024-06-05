@@ -9,6 +9,8 @@ const FONTSET_SIZE: usize = 80;
 const FONTSET_START_ADDRESS: usize = 0x50;
 const PROGRAM_START_ADDRESS: usize = 0x200;
 
+type OpcodeHandler = fn(&mut Chip8, u16);
+
 pub struct Chip8 {
     pub memory: [u8; MEMORY_SIZE],       // 4kb memory
     pub registers: [u8; REGISTER_COUNT], // 16 general purpose registers
@@ -20,6 +22,7 @@ pub struct Chip8 {
     pub stack: [u16; STACK_SIZE], // stack with 16 levels
     pub stack_pointer: u8,        // stack pointer
     pub keys: [u8; REGISTER_COUNT],
+    pub jump_table: [OpcodeHandler; 16],
 }
 
 impl Chip8 {
@@ -35,6 +38,7 @@ impl Chip8 {
             stack: [0; STACK_SIZE],
             stack_pointer: 0,
             keys: [0; REGISTER_COUNT],
+            jump_table: Chip8::create_jump_table(),
         };
         chip8.load_fonts();
         chip8
@@ -70,7 +74,93 @@ impl Chip8 {
         }
     }
     // need to implement the fetch, decode, and execute instructions
+    fn create_jump_table() -> [OpcodeHandler; 16] {
+        [
+            Chip8::op_0xxx,          // 0x0XXX group
+            Chip8::jp,               // 0x1XXX
+            Chip8::call,             // 0x2XXX
+            Chip8::se_vx_byte,       // 0x3XXX
+            Chip8::sne_vx_byte,      // 0x4XXX
+            Chip8::se_vx_vy,         // 0x5XXX
+            Chip8::ld_vx_byte,       // 0x6XXX
+            Chip8::add_vx_byte,      // 0x7XXX
+            Chip8::op_8xxx,          // 0x8XXX group
+            Chip8::sne_vx_vy,        // 0x9XXX
+            Chip8::ld_i_addr,        // 0xAXXX
+            Chip8::jp_v0_addr,       // 0xBXXX
+            Chip8::rnd_vx_byte,      // 0xCXXX
+            Chip8::drw_vx_vy_nibble, // 0xDXXX
+            Chip8::op_exxx,          // 0xEXXX group
+            Chip8::op_fxxx,          // 0xFXXX group
+        ]
+    }
 
+    pub fn emulate_cycle(&mut self) {
+        let opcode = self.fetch_opcode();
+        self.program_counter += 2;
+        let index = (opcode & 0xF000) >> 12;
+        let handler = self.jump_table[index as usize];
+        handler(self, opcode);
+
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+        if self.sound_timer > 0 {
+            self.sound_timer -= 1;
+        }
+    }
+
+    pub fn fetch_opcode(&self) -> u16 {
+        let high_byte = self.memory[self.program_counter as usize] as u16;
+        let low_byte = self.memory[(self.program_counter + 1) as usize] as u16;
+        (high_byte << 8) | low_byte
+    }
+
+    fn op_0xxx(&mut self, opcode: u16) {
+        match opcode & 0x00FF {
+            0x00E0 => self.cls(),
+            0x00EE => self.ret(),
+            _ => unimplemented!("opcode {:04x} not implemented", opcode),
+        }
+    }
+
+    fn op_8xxx(&mut self, opcode: u16) {
+        match opcode & 0x000F {
+            0x0000 => self.ld_vx_vy(opcode),
+            0x0001 => self.or_vx_vy(opcode),
+            0x0002 => self.and_vx_vy(opcode),
+            0x0003 => self.xor_vx_vy(opcode),
+            0x0004 => self.add_vx_vy(opcode),
+            0x0005 => self.sub_vx_vy(opcode),
+            0x0006 => self.shr_vx(opcode),
+            0x0007 => self.subn_vx_vy(opcode),
+            0x000E => self.shl_vx(opcode),
+            _ => unimplemented!("Opcode {:04x} not implemented", opcode),
+        }
+    }
+
+    fn op_exxx(&mut self, opcode: u16) {
+        match opcode & 0x00FF {
+            0x009E => self.skp_vx(opcode),
+            0x00A1 => self.sknp_vx(opcode),
+            _ => unimplemented!("Opcode {:04x} not implemented", opcode),
+        }
+    }
+
+    fn op_fxxx(&mut self, opcode: u16) {
+        match opcode & 0x00FF {
+            0x0007 => self.ld_vx_dt(opcode),
+            0x000A => self.ld_vx_k(opcode),
+            0x0015 => self.ld_dt_vx(opcode),
+            0x0018 => self.ld_st_vx(opcode),
+            0x001E => self.add_i_vx(opcode),
+            0x0029 => self.ld_f_vx(opcode),
+            0x0033 => self.ld_b_vx(opcode),
+            0x0055 => self.ld_i_vx(opcode),
+            0x0065 => self.ld_vx_i(opcode),
+            _ => unimplemented!("Opcode {:04x} not implemented", opcode),
+        }
+    }
     // instruction implementation
     // CLS - 00E0
     // Instruction: clear the display
