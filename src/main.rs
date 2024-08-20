@@ -1,6 +1,6 @@
 extern crate sdl2;
 mod chip8;
-
+// comment here for git stuff
 use crate::chip8::SCREEN_HEIGHT;
 use crate::chip8::SCREEN_WIDTH;
 use chip8::Chip8;
